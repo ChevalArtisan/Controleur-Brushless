@@ -1,4 +1,4 @@
-# Controlleur-Brushless
+# Controleur-Brushless
 
 
-prout prout
+Collaborateurs: Hippolyte HANDWERK & Mohamed-Yâ-Sîn MAATI
