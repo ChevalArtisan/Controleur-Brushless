@@ -1,177 +1,126 @@
-module controleur #(parameter CLK_Freq = 1000000,
-		parameter PHASE = 50,
-		parameter MIN_DUTY_PERCENT = 50)(clk,rst,duty,en,U,Un,V,Vn,W,Wn);
+module vitesse_ramp #(
+    parameter int FREQUENCY = 1000000,
+    parameter int MIN_DUTY_PERCENT = 50
+)(
+    input clk,
+    input rst,
+    input unsigned [7:0] duty,
+    input [15:0] max_cpt,
+    output reg unsigned [15:0] current_duty
+);
+    int duty_calcul;
+    int compteur_interne = 0;
 
-	input clk;
-	input rst;
-	input [7:0] duty;
-	input en;
-	output U;
-	output Un;
-	output V;
-	output Vn;
-	output W;
-	output Wn;
+    always_ff @(posedge clk) begin
 
-reg U;
-reg Un;
-reg V;
-reg Vn;
-reg W;
-reg Wn;
+    if (rst) begin
+        current_duty <= 16'b0000000000000000;
+        compteur_interne <= 0;
 
-	integer MAX_CPT = CLK_Freq / PHASE;
-    integer compteur = 0;
-    integer etape = 7;
-    integer etape_moteur = 7;
-    integer res = MAX_CPT / 2;
-    integer res_actuel = 0;
+    end else begin
 
-    integer temp_compteur;
-    integer temp_vitesse;
+        duty_calcul = (duty / 256) * max_cpt;
 
-    //Controleur
-    always @(posedge clk)
-        begin
-            if (rst == 1) begin
-                etape <= 0;
-            end
+        if (compteur_interne >= FREQUENCY / 5) begin
 
-            res <= (MAX_CPT * $rtoi($bitstoreal(duty))) / 256;
+            compteur_interne <= 0;
 
-            //Min 50%
-            if (((100 * $rtoi($bitstoreal(duty))) / 256) < MIN_DUTY_PERCENT) begin
-                res <= (MAX_CPT * MIN_DUTY_PERCENT) / 100;
+            if (duty_calcul < int'(current_duty)) begin //Ralentir
+                if ((current_duty - duty_calcul) < (max_cpt / 15)) begin
+                    current_duty <= duty_calcul;
+
+                end else begin
+                    current_duty <= duty_calcul - (max_cpt / 20);
+                end
             end
 
 
-            if ((compteur % MAX_CPT) == 0) begin
+            else begin //Accelerer
+
+                if ((duty_calcul - current_duty) < (max_cpt / 15)) begin
+                    current_duty <= duty_calcul;
+
+                end else begin
+                    current_duty <= duty_calcul + (max_cpt / 20);
+                end
+            end
+
+            if (int'(current_duty) < MIN_DUTY_PERCENT) begin //Min 50%
+                current_duty <= 16'b1000000000000000;
+            end
+
+        end
+    end
+
+    compteur_interne <= compteur_interne + 1;
+
+    end
+endmodule
+
+
+
+module compteur #(
+
+)(
+    input clk,
+    input rst,
+    input [15:0] max_cpt,
+    output reg [15:0] compteur,
+    output reg [2:0] etape
+);
+
+    always_ff @(posedge clk) begin
+        if (rst) begin
+            compteur <= 16'b0000000000000000;
+            etape <= 3'b000;
+
+        end else begin
+            if (compteur >= (int'(max_cpt) / 6)) begin  //Max_cpt = 1 tour, 1 tour = 6 phases
+                compteur <= 16'b0000000000000000;
                 etape <= (etape + 1) % 6;
-            end
-        end 
 
-	
-	//Vitesse
-    always @(posedge clk)
-        begin
-            if (rst == 1) begin
-                etape <= 0;
-            end
-
-            if (compteur % MAX_CPT == 0) begin //Mise à jour à chaque changement de phase
-
-
-                if (abs(res_actuel - res) <  (MAX_CPT / 15)) begin   //Si la différence entre le nouveau res et le res_actuel est inférieur à 7% de MAX_CPT, on lui attribue res
-                    temp_vitesse = res;
-                end
-                    
-                else if (res_actuel < res) begin
-                    temp_vitesse = res_actuel + (MAX_CPT / 20);          //Accelère de 5% de MAX_CPT
-                end
-
-                else if (res_actuel > res) begin 
-                    temp_vitesse = res_actuel - (MAX_CPT / 20);          //Décélère de 5% de MAX_CPT          
-                end;
-
-
-            end
-
-            res_actuel <= temp_vitesse;
-             
-        end
-
-	//compteur
-    always @(posedge clk)
-        begin
-
-            if ((compteur >= MAX_CPT) || (rst == 1)) begin
-                temp_compteur = 0;
-            end 
-            else begin
-                temp_compteur = compteur + 1;
-            end
-
-            compteur <= temp_compteur;
-        end
-
-	//PWM
-    always @(posedge clk)
-        begin
-            etape_moteur = 0;
-
-            if (compteur < res_actuel) begin
-                etape_moteur = etape;
+            end else begin                
+                compteur <= compteur + 1;
             end
         end
-
-	//Machine à état
-    always @(posedge clk) begin
-    if(etape_moteur == 1) begin
-      U <= 1'b 1;
-      Un <= 1'b 0;
-      V <= 1'b 0;
-      Vn <= 1'b 1;
-      W <= 1'b 0;
-      Wn <= 1'b 0;
     end
-    else if(etape_moteur == 2) begin
-      U <= 1'b 1;
-      Un <= 1'b 0;
-      V <= 1'b 0;
-      Vn <= 1'b 0;
-      W <= 1'b 0;
-      Wn <= 1'b 1;
+endmodule
+
+
+module compte_tour #(
+    parameter real FREQUENCY = 1000000
+)(
+    input clk,
+    input rst,
+    input tour,
+    output reg [15:0] max_cpt,
+    output reg [15:0] vitesse_instantanee
+);
+    int compte = 0;
+    logic actif = 0; 
+
+    always_ff @(posedge rst) begin
+        compte <= 0;
+        max_cpt <= 16'b0000000000000000;
+        vitesse_instantanee <= 16'b0000000000000000;
     end
-    else if(etape_moteur == 3) begin
-      U <= 1'b 0;
-      Un <= 1'b 0;
-      V <= 1'b 1;
-      Vn <= 1'b 0;
-      W <= 1'b 0;
-      Wn <= 1'b 1;
+
+    always_ff @(posedge tour) begin
+        if (actif == 0) begin
+            compte <= 0;
+            actif <= 1;
+        
+        end else begin
+            max_cpt <= compte;
+            vitesse_instantanee <= (FREQUENCY / compte);  //nb tour/sec
+            actif <= 0;
+        end
     end
-    else if(etape_moteur == 4) begin
-      U <= 1'b 0;
-      Un <= 1'b 1;
-      V <= 1'b 1;
-      Vn <= 1'b 0;
-      W <= 1'b 0;
-      Wn <= 1'b 0;
+
+    always_ff @(posedge clk) begin
+        if(actif == 1) begin
+            compte <= compte + 1;
+        end
     end
-    else if(etape_moteur == 5) begin
-      U <= 1'b 0;
-      Un <= 1'b 1;
-      V <= 1'b 0;
-      Vn <= 1'b 0;
-      W <= 1'b 1;
-      Wn <= 1'b 0;
-    end
-    else if(etape_moteur == 6) begin
-      U <= 1'b 0;
-      Un <= 1'b 0;
-      V <= 1'b 0;
-      Vn <= 1'b 1;
-      W <= 1'b 1;
-      Wn <= 1'b 0;
-    end
-    else begin
-      U <= 1'b 0;
-      Un <= 1'b 0;
-      V <= 1'b 0;
-      Vn <= 1'b 0;
-      W <= 1'b 0;
-      Wn <= 1'b 0;
-    end
-  end
-
-
-
-	
-
-
-
-
-
-
 
 endmodule
