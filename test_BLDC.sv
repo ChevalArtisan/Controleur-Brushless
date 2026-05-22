@@ -1,47 +1,30 @@
-module test;
-timeunit 1ns;
+module test_vitesse;
+	
+	logic clk, rst;
+	logic unsigned [7:0] duty;
+	logic unsigned [15:0] max_cpt;
+	logic unsigned [15:0] current_duty;
 
-reg clk = 0;
-reg rst = 0;
-reg [7:0] duty;
-reg en;
+	vitesse_ramp test(.clk(clk),
+		.rst(rst),
+		.duty(duty),
+		.max_cpt(max_cpt),
+		.current_duty(current_duty));
 
-wire U;
-wire Un;
-wire V;
-wire Vn;
-wire W;
-wire Wn; 
+	initial clk = 0;
+	always clk = #500ns ~clk;
 
-controleur truc(clk,rst,duty,en,U,Un,V,Vn,W,Wn);
-
-always
-  begin
-    #500 clk = 1;
-    #500 clk = 0;
-  end
-
-initial
-begin
-	rst = 1;
-	#40ns;
-	rst = 0;
-	en = 0;
-
-	duty = 8'b 01000000;
-	#2s;
-
-	duty = 8'b 11000000;
-	#2s;
-
-	duty = 8'b 00000000;
-	#2s;
-
-	duty = 8'b 11111111;
-	#2s;
+	initial begin
+		rst = 1;
+		#1ms
+		rst = 0;
+		duty = 8'b11000000;
+		max_cpt = 16'b 0100111000100000;
+		#2s
 
 
-end
+		$finish;
+	end
 
 
 endmodule
