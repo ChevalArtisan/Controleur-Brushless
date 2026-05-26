@@ -145,8 +145,8 @@ module compteur #(	//Gère le compteur interne et incrémente les phases
 endmodule
 
 
-module compte_tour #(	//Compte les tick entre 2 tours et modifie max_cpt pour que les 6 phases tiennent sur un tour complet
-    parameter real FREQUENCY = 1000000
+module compte_tour #(
+    parameter real FREQUENCY = 1000000.0 // 1 MHz par défaut
 )(
     input clk,
     input rst,
@@ -155,29 +155,26 @@ module compte_tour #(	//Compte les tick entre 2 tours et modifie max_cpt pour qu
     output reg [15:0] vitesse_instantanee
 );
     int compte = 0;
-    logic actif = 0; 
+    logic tour_z; // Pour détecter le front montant de 'tour'
 
-    always_ff @(posedge rst) begin
-        compte <= 0;
-        max_cpt <= 16'b0000000000000000;
-        vitesse_instantanee <= 16'b0000000000000000;
-    end
-
-    always_ff @(posedge tour) begin
-        if (actif == 0) begin
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst) begin
             compte <= 0;
-            actif <= 1;
-        
+            max_cpt <= 0;
+            vitesse_instantanee <= 0;
+            tour_z <= 0;
         end else begin
-            max_cpt <= compte;
-            vitesse_instantanee <= (FREQUENCY / compte);  //nb tour/sec
-            actif <= 0;
-        end
-    end
-
-    always_ff @(posedge clk) begin
-        if(actif == 1) begin
-            compte <= compte + 1;
+            tour_z <= tour; // Retard d'un cycle pour comparaison
+            
+            // Détection du front montant de 'tour'
+            if (tour && !tour_z) begin
+                max_cpt <= 16'(compte);
+                if (compte > 0)
+                    vitesse_instantanee <= (FREQUENCY / compte);
+                compte <= 0; // On redémarre le compteur à chaque tour
+            end else begin
+                compte <= compte + 1;
+            end
         end
     end
 endmodule
