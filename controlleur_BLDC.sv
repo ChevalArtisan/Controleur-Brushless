@@ -56,7 +56,7 @@ module controleur_bldc #(  //Rassemble tout les modules et gère les entrées/so
 endmodule
 
 
-module vitesse_ramp #( //Prend en entrée le duty et donne aux autres modules la vitesse interne lissée
+module vitesse_ramp #( //Prend en entrée le duty et donne compteur_interne <= compteur_interne + 1; la vitesse interne lissée
     parameter int FREQUENCY = 1000000,
     parameter int MIN_DUTY_PERCENT = 50
 )(
@@ -77,18 +77,19 @@ module vitesse_ramp #( //Prend en entrée le duty et donne aux autres modules la
 
     end else begin
 
-        duty_calcul = (duty / 256) * max_cpt;
+        duty_calcul =  (max_cpt / 256) * duty ; //(duty / 256) * max_cpt;
 
-        if (compteur_interne >= FREQUENCY / 5) begin
+
+        if (compteur_interne >= FREQUENCY / 5) begin //MAJ 5 fois par seconde
 
             compteur_interne <= 0;
 
-            if (duty_calcul < int'(current_duty)) begin //Ralentir
+            if (duty_calcul < current_duty) begin //Ralentir
                 if ((current_duty - duty_calcul) < (max_cpt / 15)) begin
                     current_duty <= duty_calcul;
 
                 end else begin
-                    current_duty <= duty_calcul - (max_cpt / 20);
+                    current_duty <= current_duty - (max_cpt / 20);
                 end
             end
 
@@ -99,18 +100,22 @@ module vitesse_ramp #( //Prend en entrée le duty et donne aux autres modules la
                     current_duty <= duty_calcul;
 
                 end else begin
-                    current_duty <= duty_calcul + (max_cpt / 20);
+                    current_duty <= (max_cpt / 20) + current_duty;
                 end
             end
 
-            if (int'(current_duty) < MIN_DUTY_PERCENT) begin //Min 50%
-                current_duty <= 16'b1000000000000000;
+            if (current_duty < MIN_DUTY_PERCENT) begin //Min 50%
+                current_duty <= (max_cpt / 2);
             end
 
-        end
+        end else begin 
+		
+		compteur_interne <= compteur_interne + 1;
+
+	end
     end
 
-    compteur_interne <= compteur_interne + 1;
+
 
     end
 endmodule
