@@ -239,12 +239,12 @@ module machine_a_etat #(	//Donne l'état des broches en fonction de la phase et 
             Wn <= 1'b 0;
             
             case (etat)
-                3'b001: begin U <= pwm_out; Vn <= 1'b1; end
-                3'b101: begin U <= pwm_out; Wn <= 1'b1; end
-                3'b100: begin V <= pwm_out; Wn <= 1'b1; end
-                3'b110: begin V <= pwm_out; Un <= 1'b1; end
-                3'b010: begin W <= pwm_out; Un <= 1'b1; end
-                3'b011: begin W <= pwm_out; Vn <= 1'b1; end
+                3'b000: begin U <= pwm_out; Vn <= 1'b1; end
+                3'b001: begin U <= pwm_out; Wn <= 1'b1; end
+                3'b010: begin V <= pwm_out; Wn <= 1'b1; end
+                3'b011: begin V <= pwm_out; Un <= 1'b1; end
+                3'b100: begin W <= pwm_out; Un <= 1'b1; end
+                3'b101: begin W <= pwm_out; Vn <= 1'b1; end
                 default: ; 
             endcase
         end
