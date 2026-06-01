@@ -138,8 +138,8 @@ module compteur #(	//Gère le compteur interne et incrémente les phases
             etat <= 3'b000;
 
         end else begin
-            if (compteur >= (int'(max_cpt) / 6)) begin  //Max_cpt = 1 tour, 1 tour = 6 phases
-                compteur <= 16'b0000000000000000;
+            if (compteur >= int'(max_cpt)) begin  //Max_cpt = 1/6 tour = 1 phase, 1 tour = 6 phases
+                compteur <= 0;
                 etat <= (etat + 1) % 6;
 
             end else begin                
@@ -173,7 +173,7 @@ module compte_tour #(
             
             // Détection du front montant de 'tour'
             if (tour && !tour_z) begin
-                max_cpt <= 16'(compte);
+                max_cpt <= (compte / 6);
                 if (compte > 0)
                     vitesse_instantanee <= (FREQUENCY / compte);
                 compte <= 0; // On redémarre le compteur à chaque tour

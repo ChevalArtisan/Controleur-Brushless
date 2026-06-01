@@ -16,26 +16,36 @@ module test_cpt_tour;
     initial clk = 0;
     always #500ns clk = ~clk;
 
-    initial begin
-        // Initialisation
-        rst = 1;
-        tour = 0;
-        #2us;
-        rst = 0;
-        
-        // Simulation d'un tour (dur√©e 20ms)
-        #10us;
-        tour = 1; #2us; tour = 0; // Front montant
-        #20ms;
-        tour = 1; #2us; tour = 0; // Deuxi√®me front -> Calcul effectu√©
-        
-        // Simulation d'un tour plus rapide (10ms)
-        #10ms;
-        tour = 1; #2us; tour = 0;
 
-        #1ms;
-        $display("Max CPT: %d, Vitesse: %d tour/s", max_cpt, vitesse_instantanee);
-        $finish;
-    end
+    initial begin
+		tour = 0;
+
+		for (int i = 0; i < 300; i++) begin	//300 tours ‡ 50t/s (6 sec)
+			tour = 1;
+			#1us
+			tour = 0;
+			#20ms
+			tour = 1;
+		end
+
+		for (int i = 0; i < 600; i++) begin	//600 tours ‡ 100t/s (6 sec)
+			tour = 1;
+			#1us
+			tour = 0;
+			#10ms
+			tour = 1;
+		end
+
+		for (int i = 0; i < 150; i++) begin	//150 tours ‡ 25t/s (6 sec)
+			tour = 1;
+			#1us
+			tour = 0;
+			#40ms
+			tour = 1;
+		end
+
+		$finish;
+
+	end
 
 endmodule
