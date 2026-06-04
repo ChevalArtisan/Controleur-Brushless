@@ -3,7 +3,7 @@ module test_compteur;
 	logic clk, rst;
 	logic unsigned [2:0] etat;
 	logic unsigned [15:0] max_cpt;
-	logic unsigned [15:0] compteur;
+	logic unsigned [7:0] compteur;
 
 	compteur M2(.clk(clk),
 		.rst(rst),

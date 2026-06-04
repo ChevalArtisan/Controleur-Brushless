@@ -58,54 +58,50 @@ endmodule
 
 module vitesse_ramp #( //Prend en entrée le duty et donne compteur_interne <= compteur_interne + 1; la vitesse interne lissée
     parameter int FREQUENCY = 1000000,
-    parameter int MIN_DUTY_PERCENT = 50
+    parameter int MIN_DUTY_PERCENT = 128
 )(
     input clk,
     input rst,
     input unsigned [7:0] duty,
-    input [15:0] max_cpt,
-    output reg unsigned [15:0] current_duty
+    output reg unsigned [7:0] current_duty
 );
-    int duty_calcul;
     int compteur_interne = 0;
 
     always_ff @(posedge clk) begin
 
     if (rst) begin
-        current_duty <= 16'b0000000000000000;
+        current_duty <= 8'b00000000;
         compteur_interne <= 0;
 
     end else begin
 
-        duty_calcul =  (max_cpt / 256) * duty ; //(duty / 256) * max_cpt;
-
-
-        if (compteur_interne >= FREQUENCY / 5) begin //MAJ 5 fois par seconde
+        if (compteur_interne >= FREQUENCY / 50) begin //MAJ 50 fois par seconde
 
             compteur_interne <= 0;
 
-            if (duty_calcul < current_duty) begin //Ralentir
-                if ((current_duty - duty_calcul) < (max_cpt / 15)) begin
-                    current_duty <= duty_calcul;
+            if (duty < current_duty) begin //Ralentir
+                //if (int'(current_duty - duty) < 18) begin // si diff < 7%, affecter directement
+                  //  current_duty <= duty;
 
-                end else begin
-                    current_duty <= current_duty - (max_cpt / 20);
-                end
+                //end else begin
+                    current_duty <= current_duty - 1; // 
+                //end
             end
 
 
-            else begin //Accelerer
+            else if (duty != current_duty) begin //Accelerer
 
-                if ((duty_calcul - current_duty) < (max_cpt / 15)) begin
-                    current_duty <= duty_calcul;
+                //if (int'(duty - current_duty) < 18) begin // si diff < 7%, affecter directement
+                //    current_duty <= duty;
 
-                end else begin
-                    current_duty <= (max_cpt / 20) + current_duty;
-                end
+                //end else begin
+		
+                    current_duty <= duty + 1; // 
+                //end
             end
 
             if (current_duty < MIN_DUTY_PERCENT) begin //Min 50%
-                current_duty <= (max_cpt / 2);
+                current_duty <= 8'b10000000;
             end
 
         end else begin 
@@ -125,28 +121,32 @@ endmodule
 module compteur #(	//Gère le compteur interne et incrémente les phases
 
 )(
-    input clk,
-    input rst,
-    input [15:0] max_cpt,
-    output reg [15:0] compteur,
-    output reg [2:0] etat
+    	input clk,
+    	input rst,
+    	input [15:0] max_cpt,
+    	output reg [7:0] compteur,
+    	output reg [2:0] etat
 );
+	int compteur_interne = 0;
 
-    always_ff @(posedge clk) begin
-        if (rst) begin
-            compteur <= 16'b0000000000000000;
-            etat <= 3'b000;
+    	always_ff @(posedge clk) begin
+        	if (rst) begin
+            		compteur_interne <= 0;
+            		etat <= 3'b000;
+			compteur <= 8'b00000000;
 
-        end else begin
-            if (compteur >= int'(max_cpt)) begin  //Max_cpt = 1/6 tour = 1 phase, 1 tour = 6 phases
-                compteur <= 0;
-                etat <= (etat + 1) % 6;
+        	end else begin
+            		if (compteur_interne >= int'(max_cpt)) begin  //Max_cpt = 1/6 tour = 1 phase, 1 tour = 6 phases
+                		compteur_interne <= 0;
+                		etat <= (etat + 1) % 6;
 
-            end else begin                
-                compteur <= compteur + 1;
-            end
-        end
-    end
+            		end else begin                
+				compteur_interne <= compteur_interne + 1;
+            		end
+			
+			compteur <= compteur + 1;
+        	end
+    	end
 endmodule
 
 
