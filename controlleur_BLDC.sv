@@ -10,8 +10,8 @@ module controleur_bldc #(  //Rassemble tout les modules et gère les entrées/so
 );
 
 	wire [15:0] max_cpt;
-	wire [15:0] compteur;
-	wire [15:0] current_duty;
+	wire [7:0] compteur;
+	wire [7:0] current_duty;
 	wire [2:0] etat;
 	wire pwm_out;
 
@@ -96,7 +96,7 @@ module vitesse_ramp #( //Prend en entrée le duty et donne compteur_interne <= c
 
                 //end else begin
 		
-                    current_duty <= duty + 1; // 
+                    current_duty <= current_duty + 1; // 
                 //end
             end
 
@@ -189,8 +189,8 @@ module pwm #(	//En fonction du compteur et de la vitesse interne indique si on a
 )(
 	input clk,
 	input rst,
-	input [15:0] compteur,
-	input [15:0] current_duty,
+	input [7:0] compteur,
+	input [7:0] current_duty,
 	output reg pwm_out
 );
 
@@ -248,7 +248,6 @@ module machine_a_etat #(	//Donne l'état des broches en fonction de la phase et 
                 default: ; 
             endcase
         end
-        //TODO
     end
 
 
