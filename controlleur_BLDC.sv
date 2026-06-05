@@ -21,7 +21,6 @@ module controleur_bldc #(  //Rassemble tout les modules et gère les entrées/so
 	vitesse_ramp M1(.clk(clk),
 		.rst(rst),
 		.duty(duty),
-		.max_cpt(max_cpt),
 		.current_duty(current_duty));
 
 	compteur M2(.clk(clk),
@@ -56,7 +55,7 @@ module controleur_bldc #(  //Rassemble tout les modules et gère les entrées/so
 endmodule
 
 
-module vitesse_ramp #( //Prend en entrée le duty et donne compteur_interne <= compteur_interne + 1; la vitesse interne lissée
+module vitesse_ramp #( //Prend en entr�e le duty et donne compteur_interne <= compteur_interne + 1; la vitesse interne liss�e
     parameter int FREQUENCY = 1000000,
     parameter int MIN_DUTY_PERCENT = 128
 )(
@@ -75,33 +74,21 @@ module vitesse_ramp #( //Prend en entrée le duty et donne compteur_interne <= c
 
     end else begin
 
-        if (compteur_interne >= FREQUENCY / 50) begin //MAJ 50 fois par seconde
+        if (compteur_interne >= FREQUENCY / 100) begin //MAJ 50 fois par seconde
 
             compteur_interne <= 0;
 
-            if (duty < current_duty) begin //Ralentir
-                //if (int'(current_duty - duty) < 18) begin // si diff < 7%, affecter directement
-                  //  current_duty <= duty;
+            if ((duty < current_duty) && (current_duty > MIN_DUTY_PERCENT)) begin //Ralentir
 
-                //end else begin
                     current_duty <= current_duty - 1; // 
-                //end
+
             end
 
 
-            else if (duty != current_duty) begin //Accelerer
-
-                //if (int'(duty - current_duty) < 18) begin // si diff < 7%, affecter directement
-                //    current_duty <= duty;
-
-                //end else begin
+            else if ((duty != current_duty) || (current_duty < MIN_DUTY_PERCENT)) begin //Accelerer
 		
                     current_duty <= current_duty + 1; // 
-                //end
-            end
 
-            if (current_duty < MIN_DUTY_PERCENT) begin //Min 50%
-                current_duty <= 8'b10000000;
             end
 
         end else begin 
