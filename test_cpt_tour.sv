@@ -1,7 +1,7 @@
 module test_cpt_tour;
     logic clk, rst, tour;
     wire [15:0] max_cpt;
-    wire [15:0] vitesse_instantanee;
+    wire [11:0] vitesse_instantanee;
 
     // Correction : Ajout de la connexion .tour
     compte_tour #( .FREQUENCY(1000000.0) ) test (

@@ -6,7 +6,7 @@ module controleur_bldc #(  //Rassemble tout les modules et gère les entrées/so
 	input tour,
 	output reg U, V, W, Un, Vn, Wn,
 	output reg tour_complet,
-	output reg [15:0] vitesse_instantanee
+	output reg [11:0] vitesse_instantanee
 );
 
 	wire [15:0] max_cpt;
@@ -55,7 +55,7 @@ module controleur_bldc #(  //Rassemble tout les modules et gère les entrées/so
 endmodule
 
 
-module vitesse_ramp #( //Prend en entr�e le duty et donne compteur_interne <= compteur_interne + 1; la vitesse interne liss�e
+module vitesse_ramp #( //Prend en entr�e le duty et donne compteur_interne <= compteur_interne + 1; la vitesse interne liss�e
     parameter int FREQUENCY = 1000000,
     parameter int MIN_DUTY_PERCENT = 128
 )(
@@ -138,13 +138,13 @@ endmodule
 
 
 module compte_tour #(
-    parameter real FREQUENCY = 1000000.0 // 1 MHz par défaut
+    parameter int FREQUENCY = 1000000 // 1 MHz par défaut
 )(
     input clk,
     input rst,
     input tour,
     output reg [15:0] max_cpt,
-    output reg [15:0] vitesse_instantanee
+    output reg [11:0] vitesse_instantanee
 );
     int compte = 0;
     logic tour_z; // Pour détecter le front montant de 'tour'

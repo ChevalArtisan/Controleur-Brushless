@@ -4,7 +4,7 @@ module test_BLDC;
 	logic unsigned [7:0] duty;
 	logic U,V,W,Un,Vn,Wn;
 	logic tour_complet;
-	logic unsigned [15:0] vitesse_instantanee;
+	logic unsigned [11:0] vitesse_instantanee;
 
 	controleur_bldc test(
 		.clk(clk),
