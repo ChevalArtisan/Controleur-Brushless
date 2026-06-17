@@ -119,29 +119,43 @@ module compteur #(	//Gère le compteur interne et incrémente les phases
         output reg [1:0] decal
 );
 	int compteur_interne = 0;
+    logic retour=0;
 
     	always_ff @(posedge clk) begin
         	if (rst) begin
             		compteur_interne <= 0;
             		etat <= 3'b000;
+                    decal<=0;
 			compteur <= 8'b00000000;
 
         	end else begin
             		if (compteur_interne >= int'(max_cpt)) begin  //Max_cpt = 1/6 tour = 1 phase, 1 tour = 6 phases
                 		compteur_interne <= 0;
                 		etat <= (etat + 1) % 6;
-
+                        retour<=~retour;
             		end else begin                
 				compteur_interne <= compteur_interne + 1;
+                if (retour==0) begin
                 if (compteur_interne<max_cpt/4) begin//si le compteur est dans la phase à 25%
                     decal<=2'b10;
                 end else if (compteur_interne<max_cpt/2) begin
                     decal<=2'b01;
                 end else begin
                     decal<=2'b00;
+                    
+                end 
+                
+                end else begin
+                    if (compteur_interne<max_cpt/2) begin//si le compteur est dans la phase à 25%
+                    decal<=2'b00;
+                end else if (compteur_interne<max_cpt*3/4) begin
+                    decal<=2'b01;
+                end else begin
+                    decal<=2'b10;
+                    
+                end 
                 end
-            		end
-			
+            end
 			compteur <= compteur + 1;
         	end
     	end
