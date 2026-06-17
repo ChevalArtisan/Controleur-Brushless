@@ -13,6 +13,7 @@ module controleur_bldc #(  //Rassemble tout les modules et gère les entrées/so
 	wire [7:0] compteur;
 	wire [7:0] current_duty;
 	wire [2:0] etat;
+    wire [1:0] decal;
 	wire pwm_out;
 
 	assign tour_complet = tour;
@@ -27,7 +28,8 @@ module controleur_bldc #(  //Rassemble tout les modules et gère les entrées/so
 		.rst(rst),
 		.max_cpt(max_cpt),
 		.compteur(compteur),
-		.etat(etat));
+		.etat(etat),
+        .decal(decal));
 
 	compte_tour M3(.clk(clk),
 		.rst(rst),
@@ -38,6 +40,7 @@ module controleur_bldc #(  //Rassemble tout les modules et gère les entrées/so
 	pwm M4(.clk(clk),
 		.rst(rst),
 		.compteur(compteur),
+		.decal(decal),
 		.current_duty(current_duty),
 		.pwm_out(pwm_out));
 
@@ -112,7 +115,8 @@ module compteur #(	//Gère le compteur interne et incrémente les phases
     	input rst,
     	input [15:0] max_cpt,
     	output reg [7:0] compteur,
-    	output reg [2:0] etat
+    	output reg [2:0] etat,
+        output reg [1:0] decal
 );
 	int compteur_interne = 0;
 
@@ -129,6 +133,13 @@ module compteur #(	//Gère le compteur interne et incrémente les phases
 
             		end else begin                
 				compteur_interne <= compteur_interne + 1;
+                if (compteur_interne<max_cpt/4) begin//si le compteur est dans la phase à 25%
+                    decal<=2'b10;
+                end else if (compteur_interne<max_cpt/2) begin
+                    decal<=2'b01;
+                end else begin
+                    decal<=2'b00;
+                end
             		end
 			
 			compteur <= compteur + 1;
@@ -177,23 +188,31 @@ module pwm #(	//En fonction du compteur et de la vitesse interne indique si on a
 	input clk,
 	input rst,
 	input [7:0] compteur,
+	input [1:0] decal,
 	input [7:0] current_duty,
 	output reg pwm_out
 );
-
+    int cd_pyramide=10;
     always @(posedge clk) begin
         if(rst) begin
-            pwm_out<= 1'b 0;
+            	pwm_out<= 1'b 0;
 
-        end else begin
 
-            if (compteur < current_duty) begin
-                pwm_out<=1'b 1;
+        end else //TODO rendre "symetrique"
+        case (decal)
+            2'b10:      cd_pyramide<=current_duty/4; 
+            2'b01:      cd_pyramide<=current_duty/2;
+            2'b00:      cd_pyramide<=current_duty; 
+            default:    cd_pyramide<=current_duty;
 
-            end else begin
-                pwm_out<= 1'b 0;
-            end 
-        end
+        endcase
+
+        if (compteur < cd_pyramide) begin
+             			pwm_out<=1'b 1;
+                    end else begin
+            	 		pwm_out<= 1'b 0;
+                    end
+                
     end
 endmodule
 
