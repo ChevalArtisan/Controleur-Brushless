@@ -3,6 +3,7 @@ module test_pwm_out;
     logic clk, rst;
     logic unsigned [15:0] compteur;
     logic unsigned [15:0] current_duty;
+    logic unsigned [15:0] max_cpt;
     logic pwm_out;
 
     pwm test(.clk(clk),
