@@ -1,6 +1,5 @@
 module controleur_bldc #(  //Rassemble tout les modules et gère les entrées/sorties
 )(
-	input clk,
 	input rst,
 	input [7:0] duty,
 	input tour,
@@ -9,14 +8,18 @@ module controleur_bldc #(  //Rassemble tout les modules et gère les entrées/so
 	output reg [11:0] vitesse_instantanee
 );
 
+	reg clk;
 	wire [15:0] max_cpt;
 	wire [7:0] compteur;
 	wire [7:0] current_duty;
 	wire [2:0] etat;
-    wire [1:0] decal;
+	wire acceleration;
 	wire pwm_out;
+	wire pwm_acceleration;
 
 	assign tour_complet = tour;
+
+	always clk = #500ns ~clk; //Horloge (1 000 000 Hz)
  
 
 	vitesse_ramp M1(.clk(clk),
@@ -29,7 +32,7 @@ module controleur_bldc #(  //Rassemble tout les modules et gère les entrées/so
 		.max_cpt(max_cpt),
 		.compteur(compteur),
 		.etat(etat),
-        .decal(decal));
+        	.acceleration(acceleration));
 
 	compte_tour M3(.clk(clk),
 		.rst(rst),
@@ -40,13 +43,15 @@ module controleur_bldc #(  //Rassemble tout les modules et gère les entrées/so
 	pwm M4(.clk(clk),
 		.rst(rst),
 		.compteur(compteur),
-		.decal(decal),
+		.acceleration(acceleration),
 		.current_duty(current_duty),
-		.pwm_out(pwm_out));
+		.pwm_out(pwm_out),
+		.pwm_acceleration(pwm_acceleration));
 
 	machine_a_etat M5(.clk(clk),
 		.rst(rst),
 		.pwm_out(pwm_out),
+		.pwm_acceleration(pwm_acceleration),
 		.etat(etat),
 		.U(U),
 		.V(V),
@@ -116,48 +121,29 @@ module compteur #(	//Gère le compteur interne et incrémente les phases
     	input [15:0] max_cpt,
     	output reg [7:0] compteur,
     	output reg [2:0] etat,
-        output reg [1:0] decal
+        output reg acceleration
 );
 	int compteur_interne = 0;
-    logic retour=0;
 
     	always_ff @(posedge clk) begin
         	if (rst) begin
             		compteur_interne <= 0;
             		etat <= 3'b000;
-                    decal<=0;
 			compteur <= 8'b00000000;
+			acceleration <= 1'b0;
 
         	end else begin
             		if (compteur_interne >= int'(max_cpt)) begin  //Max_cpt = 1/6 tour = 1 phase, 1 tour = 6 phases
                 		compteur_interne <= 0;
                 		etat <= (etat + 1) % 6;
-                        retour<=~retour;
             		end else begin                
 				compteur_interne <= compteur_interne + 1;
-                if (retour==0) begin
-                if (compteur_interne<max_cpt/4) begin//si le compteur est dans la phase à 25%
-                    decal<=2'b10;
-                end else if (compteur_interne<max_cpt/2) begin
-                    decal<=2'b01;
-                end else begin
-                    decal<=2'b00;
-                    
-                end 
-                
-                end else begin
-                    if (compteur_interne<max_cpt/2) begin//si le compteur est dans la phase à 25%
-                    decal<=2'b00;
-                end else if (compteur_interne<max_cpt*3/4) begin
-                    decal<=2'b01;
-                end else begin
-                    decal<=2'b10;
-                    
-                end 
-                end
-            end
-			compteur <= compteur + 1;
-        	end
+                	end
+
+			acceleration <= ((etat % 2) == 0) ^ (compteur < (int'(max_cpt) / 2));
+            	end
+
+		compteur <= compteur + 1;
     	end
 endmodule
 
@@ -202,32 +188,41 @@ module pwm #(	//En fonction du compteur et de la vitesse interne indique si on a
 	input clk,
 	input rst,
 	input [7:0] compteur,
-	input [1:0] decal,
+	input acceleration,
 	input [7:0] current_duty,
-	output reg pwm_out
+	output reg pwm_out,
+	output reg pwm_acceleration
 );
-    int cd_pyramide=10;
+    int cd_pyramide;
     always @(posedge clk) begin
         if(rst) begin
-            	pwm_out<= 1'b 0;
+            	pwm_out <= 1'b 0;
+		pwm_acceleration <= 1'b 0;
 
+        end else 
+	        case (acceleration)
+            		1'b 0:      cd_pyramide<=current_duty/4; 
+	            	1'b 1:      cd_pyramide<=current_duty/2; 
+	            	default:    cd_pyramide<=current_duty/4;
 
-        end else //TODO rendre "symetrique"
-        case (decal)
-            2'b10:      cd_pyramide<=current_duty/4; 
-            2'b01:      cd_pyramide<=current_duty/2;
-            2'b00:      cd_pyramide<=current_duty; 
-            default:    cd_pyramide<=current_duty;
+        	endcase
 
-        endcase
-
-        if (compteur < cd_pyramide) begin
-             			pwm_out<=1'b 1;
-                    end else begin
-            	 		pwm_out<= 1'b 0;
-                    end
+		//Gestion phase principale
+	        if (compteur < current_duty) begin
+	             	pwm_out<=1'b 1;
+	        end else begin
+	            	 pwm_out<= 1'b 0;
+	        end
+	
+		//Gestion acc�leration pr�/post phase
+		if (compteur < cd_pyramide) begin
+	        	pwm_acceleration <=1'b 1;
+	        end else begin
+	            	pwm_acceleration <= 1'b 0;
+	        end
+	
                 
-    end
+    	end
 endmodule
 
 
@@ -236,6 +231,7 @@ module machine_a_etat #(	//Donne l'état des broches en fonction de la phase et 
 	input clk,
 	input rst,
 	input pwm_out,
+	input pwm_acceleration,
 	input [2:0] etat,
 	output reg U,V,W,Un,Vn,Wn
 );
@@ -259,12 +255,12 @@ module machine_a_etat #(	//Donne l'état des broches en fonction de la phase et 
             Wn <= 1'b 0;
             
             case (etat)
-                3'b000: begin U <= pwm_out; Vn <= 1'b1; end
-                3'b001: begin U <= pwm_out; Wn <= 1'b1; end
-                3'b010: begin V <= pwm_out; Wn <= 1'b1; end
-                3'b011: begin V <= pwm_out; Un <= 1'b1; end
-                3'b100: begin W <= pwm_out; Un <= 1'b1; end
-                3'b101: begin W <= pwm_out; Vn <= 1'b1; end
+                3'b000: begin U <= pwm_out; Vn <= 1'b1; W <= pwm_acceleration; end
+                3'b001: begin U <= pwm_out; Wn <= 1'b1; V <= pwm_acceleration; end
+                3'b010: begin V <= pwm_out; Wn <= 1'b1; U <= pwm_acceleration; end
+                3'b011: begin V <= pwm_out; Un <= 1'b1; W <= pwm_acceleration; end
+                3'b100: begin W <= pwm_out; Un <= 1'b1; V <= pwm_acceleration; end
+                3'b101: begin W <= pwm_out; Vn <= 1'b1; U <= pwm_acceleration; end
                 default: ; 
             endcase
         end
