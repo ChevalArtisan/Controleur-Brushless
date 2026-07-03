@@ -1,13 +1,12 @@
 module test_BLDC;
 	
-	logic clk, rst, tour;
+	logic rst, tour;
 	logic unsigned [7:0] duty;
 	logic U,V,W,Un,Vn,Wn;
 	logic tour_complet;
 	logic unsigned [11:0] vitesse_instantanee;
 
 	controleur_bldc test(
-		.clk(clk),
 		.rst(rst),
 		.duty(duty),
 		.U(U),
@@ -20,8 +19,6 @@ module test_BLDC;
 		.tour_complet(tour_complet),
 		.vitesse_instantanee(vitesse_instantanee));
 
-	initial clk = 0;
-	always clk = #500ns ~clk;
 
 	initial begin
 		tour = 0;
