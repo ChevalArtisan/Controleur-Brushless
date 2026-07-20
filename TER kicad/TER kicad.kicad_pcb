@@ -3342,19 +3342,6 @@
 			(justify left bottom)
 		)
 	)
-	(gr_text "SKIBIDILC"
-		(at 113.97 65.39 0)
-		(layer "F.SilkS")
-		(uuid "943b10c5-783e-42cd-b1e7-ebe9170373f3")
-		(effects
-			(font
-				(size 1.2 1.2)
-				(thickness 0.3)
-				(bold yes)
-			)
-			(justify left bottom)
-		)
-	)
 	(gr_text "A\nB\nC"
 		(at 115.41 88.82 0)
 		(layer "F.SilkS")
