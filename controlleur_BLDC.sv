@@ -1,5 +1,6 @@
 module controleur_bldc #(  //Rassemble tout les modules et gère les entrées/sorties
 )(
+    input clk_27,
 	input rst,
 	input [7:0] duty,
 	input tour,
@@ -8,7 +9,8 @@ module controleur_bldc #(  //Rassemble tout les modules et gère les entrées/so
 	output reg [11:0] vitesse_instantanee
 );
 
-	reg clk;
+    reg clk;
+
 	wire [15:0] max_cpt;
 	wire [7:0] compteur;
 	wire [7:0] current_duty;
@@ -17,10 +19,21 @@ module controleur_bldc #(  //Rassemble tout les modules et gère les entrées/so
 	wire pwm_out;
 	wire pwm_acceleration;
 
-	assign tour_complet = tour;
+    //A modifier après test
+	assign tour_complet = clk;
 
-	initial clk = 0;
-	always clk = #500ns ~clk; //Horloge (1 000 000 Hz)
+    int compteur_clk = 0;
+    
+    always_ff @(posedge clk_27) begin
+        if (compteur_clk >= 27) begin
+            clk = 1;
+            compteur_clk = 0;
+        end else begin
+            clk = 0;
+            compteur_clk = compteur_clk + 1;
+        end
+    end
+        
  
 
 	vitesse_ramp M1(.clk(clk),
@@ -77,7 +90,7 @@ module vitesse_ramp #( //Prend en entr�e le duty et donne compteur_interne <= 
 
     always_ff @(posedge clk) begin
 
-    if (rst) begin
+    if (!rst) begin
         current_duty <= 8'b00000000;
         compteur_interne <= 0;
 
@@ -129,7 +142,7 @@ module compteur #(	//Gère le compteur interne et incrémente les phases
 	reg A, B;
 
     	always_ff @(posedge clk) begin
-        	if (rst) begin
+        	if (!rst) begin
             		compteur_interne <= 0;
             		etat <= 3'b000;
 			compteur <= 8'b00000000;
@@ -163,24 +176,27 @@ module compte_tour #(
     int compte = 0;
     logic tour_z; // Pour détecter le front montant de 'tour'
 
-    always_ff @(posedge clk or posedge rst) begin
-        if (rst) begin
+    always_ff @(posedge clk) begin
+        if (!rst) begin
             compte <= 0;
             max_cpt <= 0;
             vitesse_instantanee <= 0;
             tour_z <= 0;
         end else begin
-            tour_z <= tour; // Retard d'un cycle pour comparaison
+//            tour_z <= tour; // Retard d'un cycle pour comparaison
+//            
+             //Détection du front montant de 'tour'
+//            if (tour && !tour_z) begin
+//                max_cpt <= (compte / 6);
+//                if (compte > 0)
+//                    vitesse_instantanee <= (FREQUENCY / compte);
+//                compte <= 0; // On redémarre le compteur à chaque tour
+//            end else begin
+//                compte <= compte + 1;
+//            end
             
-            // Détection du front montant de 'tour'
-            if (tour && !tour_z) begin
-                max_cpt <= (compte / 6);
-                if (compte > 0)
-                    vitesse_instantanee <= (FREQUENCY / compte);
-                compte <= 0; // On redémarre le compteur à chaque tour
-            end else begin
-                compte <= compte + 1;
-            end
+            //Test avec 100t/s
+            max_cpt <= 10000 / 6;
         end
     end
 endmodule
@@ -198,7 +214,7 @@ module pwm #(	//En fonction du compteur et de la vitesse interne indique si on a
 );
     int cd_pyramide;
     always @(posedge clk) begin
-        if(rst) begin
+        if(!rst) begin
             	pwm_out <= 1'b 0;
 		pwm_acceleration <= 1'b 0;
 
@@ -241,7 +257,7 @@ module machine_a_etat #(	//Donne l'état des broches en fonction de la phase et 
 
     always @(posedge clk) begin
 
-        if(rst) begin
+        if(!rst) begin
             U <= 1'b 0;
             Un <= 1'b 0;
             V <= 1'b 0;
